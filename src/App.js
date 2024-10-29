@@ -1,21 +1,13 @@
-import { useState } from "react";
-
+import React from "react";
 import PdfViewerComponent from "./components/PdfViewerComponent";
-import "./App.css";
 
 function App() {
-  const [document, setDocument] = useState("document.pdf");
-
-  const handleOpen = () => setDocument("another-example.pdf");
+  const pdfUrl = "https://www.antennahouse.com/hubfs/xsl-fo-sample/pdf/basic-link-1.pdf";
 
   return (
-    <div className="App">
-      <button className="App-button" onClick={handleOpen}>
-        Open another document
-      </button>
-      <div className="App-viewer">
-        <PdfViewerComponent document={document} />
-      </div>
+    <div>
+      <h1 style={{textAlign: "center"}}>PDF Viewer</h1>
+      <PdfViewerComponent document={pdfUrl} />
     </div>
   );
 }
