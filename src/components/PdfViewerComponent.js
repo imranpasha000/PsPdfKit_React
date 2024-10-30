@@ -3,14 +3,32 @@ import { useEffect, useRef } from "react";
 export default function PdfViewerComponent(props) {
   const containerRef = useRef(null);
 
+  // Function to save annotation to the server
+  async function saveAnnotation(annotation) {
+    try {
+      const response = await fetch("http://localhost:5000/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ annotations: [annotation] }),
+      });
+      const result = await response.text();
+      console.log("Server Response:", result);
+    } catch (error) {
+      console.error("Error saving annotation:", error);
+    }
+  }
+
   useEffect(() => {
-    const container = containerRef.current;
+    let instance;
     let PSPDFKit;
 
     (async function () {
       PSPDFKit = await import("pspdfkit");
-      const instance = await PSPDFKit.load({
-        container,
+
+      instance = await PSPDFKit.load({
+        container: containerRef.current,
         document: props.document,
         baseUrl: `${window.location.protocol}//${window.location.host}/${process.env.PUBLIC_URL}`,
         toolbarItems: [
@@ -60,9 +78,32 @@ export default function PdfViewerComponent(props) {
           { type: "callout" },
         ],
       });
+
+      // Add event listener for "annotations.didSave"
+      instance.addEventListener("annotations.didSave", async () => {
+        const instantJSON = await instance.exportInstantJSON();
+        await fetch("http://localhost:5000/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(instantJSON),
+        });
+      });
     })();
 
-    return () => PSPDFKit && PSPDFKit.unload(container);
+    // Cleanup function to remove the event listener and unload PSPDFKit
+    return () => {
+      if (instance) {
+        instance.removeEventListener("annotations.didSave", async () => {
+          const instantJSON = await instance.exportInstantJSON();
+          await fetch("http://localhost:5000/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(instantJSON),
+          });
+        });
+      }
+      PSPDFKit && PSPDFKit.unload(containerRef.current);
+    };
   }, [props.document]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100vh" }} />;
