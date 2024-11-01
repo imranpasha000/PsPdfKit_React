@@ -1,3 +1,100 @@
+import PSPDFKit from "pspdfkit";
+import { useEffect, useRef } from "react";
+
+export default function PdfViewerComponent(props) {
+  const containerRef = useRef(null);
+
+  let downloadCheck = true,
+    printCheck = true,
+    readOnly = false;
+
+  const toolBar = [
+    { type: "sidebar-thumbnails" },
+    { type: "sidebar-document-outline" },
+    { type: "sidebar-annotations" },
+    { type: "pager" },
+    { type: "pan" },
+    { type: "zoom-out" },
+    { type: "zoom-in" },
+    { type: "zoom-mode" },
+    { type: "multi-annotations-selection" },
+    { type: "spacer" },
+    { type: "annotate" },
+    { type: "ink" },
+    { type: "highlighter" },
+    !readOnly && { type: "text-highlighter" },
+    { type: "ink-eraser" },
+    { type: "note" },
+    { type: "callout" },
+    { type: "text" },
+    { type: "line" },
+    { type: "arrow" },
+    { type: "rectangle" },
+    { type: "dashed-rectangle" },
+    { type: "ellipse" },
+    { type: "dashed-ellipse" },
+    { type: "polygon" },
+    { type: "dashed-polygon" },
+    { type: "polyline" },
+    { type: "search" },
+    printCheck && !readOnly && { type: "print" },
+    downloadCheck && !readOnly && { type: "export-pdf" },
+  ].filter(Boolean);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    let instance;
+
+    (async function () {
+      try {
+        PSPDFKit && PSPDFKit.unload(container);
+        instance = await PSPDFKit.load({
+          container,
+          document: props.document,
+          baseUrl: `${window.location.protocol}//${window.location.host}/`,
+          toolbarItems: toolBar,
+          disableTextSelection: readOnly,
+        });
+
+        instance.setViewState((state) =>
+          state
+            .set("allowPrinting", printCheck)
+            .set("printQuality", PSPDFKit.PrintQuality.HIGH)
+        );
+
+        instance.addEventListener("annotations.didSave", async () => {
+          const instantJSON = await instance.exportInstantJSON();
+          console.log(instantJSON?.annotations);
+          await fetch("http://localhost:3000/annotations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(instantJSON.annotations),
+          });
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+
+    return () => PSPDFKit && PSPDFKit.unload(container);
+  }, [props.document]);
+
+  return <div ref={containerRef} style={{ width: "100%", height: "97.5vh" }} />;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## PSPDFKit for Web Example — React.js
 
 PSPDFKit for Web is a powerful PDF SDK that enables you to view, annotate, sign, and edit PDF documents in your web applications. This repository demonstrates how to seamlessly integrate PSPDFKit with a React application.
